@@ -29,6 +29,7 @@ jobs:
           platforms: linux/amd64
           file: ./Containerfile
           push: true
+          no-cache: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/my-msa-inventory-service:${{ github.sha }}
 
   update-manifest:
