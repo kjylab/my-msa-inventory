@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     kotlin("plugin.jpa")
+    kotlin("kapt")
 }
 
 dependencies {
@@ -15,6 +16,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
     implementation("org.springframework.kafka:spring-kafka")
+
+    kapt("com.querydsl:querydsl-apt:5.1.0:jakarta")
+    kapt("jakarta.persistence:jakarta.persistence-api")
+    kapt("jakarta.annotation:jakarta.annotation-api")
 
     runtimeOnly("com.h2database:h2")
 }
