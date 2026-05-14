@@ -14,7 +14,7 @@ RUN ./gradlew dependencies --no-daemon
 
 COPY . .
 
-RUN ./gradlew :inventory-service:bootJar -x test --no-daemon
+RUN ./gradlew :inventory-service:bootJar -x test --no-daemon --refresh-dependencies
 
 FROM eclipse-temurin:21.0.9_10-jre-jammy
 WORKDIR /app
