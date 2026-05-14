@@ -5,7 +5,7 @@ plugins {
 }
 
 dependencies {
-    implementation("com.github.kjylab:my-msa-common:v1.+")
+    implementation("com.github.kjylab:my-msa-common:v1.0.6")
 
     implementation("org.springframework.boot:spring-boot-starter-web")
 
