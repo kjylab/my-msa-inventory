@@ -3,7 +3,6 @@ package dev.ktcloud.black.inventory.application.service
 import dev.ktcloud.black.client.redis.api.DistributedLock
 import dev.ktcloud.black.client.redis.api.IdempotentEventProcessor
 import dev.ktcloud.black.inventory.application.dto.event.outbound.InventoryReservedResultEvent
-import dev.ktcloud.black.inventory.application.port.cache.outbound.InventoryCacheCommandOutboundPort
 import dev.ktcloud.black.inventory.application.port.event.InventoryOrderEventPublishPort
 import dev.ktcloud.black.inventory.application.port.inbound.command.CreateInventoryCommand
 import dev.ktcloud.black.inventory.application.port.inbound.command.DecreaseInventoryCommand
@@ -25,23 +24,31 @@ class InventoryCommandService(
     private val loadCacheSyncedInventoryOutboundPort: LoadCacheSyncedInventoryOutboundPort,
     private val updateInventoryCommandOutboundPort: UpdateInventoryCommandOutboundPort,
     private val distributedLock: DistributedLock,
-    private val inventoryCacheCommandOutboundPort: InventoryCacheCommandOutboundPort,
     private val idempotentEventProcessor: IdempotentEventProcessor,
     private val inventoryOrderEventPublishPort: InventoryOrderEventPublishPort
 ): CreateInventoryCommand, DecreaseInventoryCommand, IncreaseInventoryCommand {
     @Transactional
-    override fun create(command: CreateInventoryCommand.In) {
+    override fun create(command: CreateInventoryCommand.In): CreateInventoryCommand.Out {
         val inventoryDomainEntity = InventoryDomainEntity(
             productId = command.productId,
             skuCode = command.skuCode,
         )
 
-        inventoryStateCommandOutboundPort.save(inventoryDomainEntity)
+        val saved = inventoryStateCommandOutboundPort.save(inventoryDomainEntity)
+
+        val loaded = distributedLock.execute(
+            key = InventoryLockKey(saved.id).toLockKey(),
+            func = {
+                loadCacheSyncedInventoryOutboundPort.loadCacheSyncedInventory(saved.id)
+            }
+        )
+
+        return CreateInventoryCommand.Out.from(loaded)
     }
 
     @Transactional
-    override fun decrease(command: DecreaseInventoryCommand.In) {
-        try {
+    override fun decrease(command: DecreaseInventoryCommand.In): DecreaseInventoryCommand.Out {
+        val inventory = try {
             loadCacheSyncedInventoryOutboundPort.loadInventory(command.inventoryId)
         } catch (_: InventoryException.NoCachedInventoryFound) {
             distributedLock.execute(
@@ -56,8 +63,7 @@ class InventoryCommandService(
             idempotentEventProcessor.withIdempotencyProcess(
                 InventoryDecreaseIdempotencyKey(command.inventoryId, command.orderId).toIdempotencyKey(),
                 func = {
-                    val eventId = updateInventoryCommandOutboundPort.decrease(command.inventoryId, command.amount)
-                    inventoryCacheCommandOutboundPort.decrease(command.inventoryId, command.amount, eventId)
+                    updateInventoryCommandOutboundPort.decrease(command.inventoryId, command.amount)
                 }
             )
         } catch (_: InventoryException.InventoryNotEnough) {
@@ -69,23 +75,30 @@ class InventoryCommandService(
                     resultState = InventoryReserveResultState.FAILED
                 )
             )
+
+            null
         }
 
-        if (result != null) {
-            inventoryOrderEventPublishPort.publish(
-                InventoryReservedResultEvent(
-                    orderId = command.inventoryId,
-                    inventoryId = command.inventoryId,
-                    amount = command.amount,
-                    resultState = InventoryReserveResultState.SUCCESS
-                )
+        if (result == null)
+            throw InventoryException.InventoryNotEnough()
+
+        inventoryOrderEventPublishPort.publish(
+            InventoryReservedResultEvent(
+                orderId = command.inventoryId,
+                inventoryId = command.inventoryId,
+                amount = command.amount,
+                resultState = InventoryReserveResultState.SUCCESS
             )
-        }
+        )
+
+        inventory.setQuantity(result)
+
+        return DecreaseInventoryCommand.Out.from(inventory)
     }
 
     @Transactional
-    override fun increase(command: IncreaseInventoryCommand.In) {
-        try {
+    override fun increase(command: IncreaseInventoryCommand.In): IncreaseInventoryCommand.Out {
+        val inventory = try {
             loadCacheSyncedInventoryOutboundPort.loadInventory(command.inventoryId)
         } catch (_: InventoryException.NoCachedInventoryFound) {
             distributedLock.execute(
@@ -96,7 +109,10 @@ class InventoryCommandService(
             )
         }
 
-        val eventId = updateInventoryCommandOutboundPort.increase(command.inventoryId, command.amount)
-        inventoryCacheCommandOutboundPort.increase(command.inventoryId, command.amount, eventId)
+        val quantity = updateInventoryCommandOutboundPort.increase(command.inventoryId, command.amount)
+
+        inventory.setQuantity(quantity)
+
+        return IncreaseInventoryCommand.Out.from(inventory)
     }
 }

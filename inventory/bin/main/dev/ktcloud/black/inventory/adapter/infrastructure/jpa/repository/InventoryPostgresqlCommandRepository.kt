@@ -10,9 +10,11 @@ class InventoryPostgresqlCommandRepository(
     private val repository: InventoryPostgresqlRepository,
     private val inventoryMapper: InventoryMapper
 ): InventoryStateCommandOutboundPort {
-    override fun save(inventory: InventoryDomainEntity) {
+    override fun save(inventory: InventoryDomainEntity): InventoryDomainEntity {
         val inventoryOrmEntity = inventoryMapper.toOrmEntity(inventory)
 
-        repository.save(inventoryOrmEntity)
+        val saved = repository.save(inventoryOrmEntity)
+
+        return inventoryMapper.toDomainEntity(saved)
     }
 }

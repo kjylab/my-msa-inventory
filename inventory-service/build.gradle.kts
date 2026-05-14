@@ -67,3 +67,7 @@ protobuf {
         }
     }
 }
+
+tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+    exclude("**/querydsl-jpa-5.1.0.jar")
+}
