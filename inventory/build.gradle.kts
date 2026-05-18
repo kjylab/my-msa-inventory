@@ -5,7 +5,7 @@ plugins {
 }
 
 dependencies {
-    implementation("com.github.kjylab:my-msa-common:v1.0.6")
+    api("com.github.kjylab:my-msa-common:1.0.8")
     implementation("com.github.kjylab:my-msa-client-redis:v1.+")
     implementation(project(":inventory-event"))
 
