@@ -25,7 +25,7 @@ jobs:
       - name: Build JAR
         env:
           GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          PACKAGES_TOKEN: ${{ secrets.GH_PAT }}
         run: ./gradlew :inventory-service:bootJar -x test --no-daemon
 
       - name: Set up Docker Buildx
