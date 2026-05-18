@@ -5,4 +5,5 @@
 build/
 bin/
 */build/
+!inventory-service/build/libs/inventory-service.jar
 */bin/
