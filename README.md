@@ -55,7 +55,7 @@ service InventoryService {
 }
 ```
 
-> gRPC 포트: **9003** (HTTP: 8080)
+> gRPC 포트: **9090** (HTTP: 8080)
 
 ## Kafka 토픽
 
@@ -64,12 +64,17 @@ service InventoryService {
 | `inventory-reserve-request-topic` | 수신 (consumer) | order-service → 재고 예약 요청 |
 | `inventory-reserved-result-topic` | 발행 (producer) | 재고 예약 성공/실패 결과 → order-service |
 
+### Kafka 설정 특이사항
+- Producer: `ENABLE_IDEMPOTENCE=true`, `ACKS=all`, `RETRIES=MAX_VALUE` → 메시지 유실 방지
+- Consumer Group: `inventory-service-group`
+- 메시지 형식: JSON (JsonSerializer/JsonDeserializer)
+
 ## 실행 포트
 
 | 포트 | 용도 |
 |------|------|
-| 8080 | HTTP (actuator: /healthz, /actuator/prometheus) |
-| 9003 | gRPC (내부 서비스 통신) |
+| 8080 | HTTP (actuator: /healthz, /prometheus) |
+| 9090 | gRPC (내부 서비스 통신) |
 
 ## 의존 인프라
 
@@ -78,6 +83,26 @@ service InventoryService {
 | PostgreSQL (`inventory_db`) | 재고 영구 저장 |
 | Redis | 재고 수량 캐시 + 원자적 차감/증가 |
 | Kafka | 주문 이벤트 비동기 처리 |
+
+## 관측성 (Observability)
+
+### 메트릭 (Prometheus)
+- `/prometheus` 엔드포인트로 메트릭 노출
+- HTTP 요청별 latency histogram bucket 활성화
+- ServiceMonitor로 Prometheus 자동 스크레이프
+
+### Kafka Consumer Lag 모니터링
+- `kafka-exporter` (danielqsj/kafka-exporter:v1.9.0) 별도 배포
+- `inventory-service-group` consumer lag 메트릭 수집
+- Grafana `kafka-lag` 대시보드에서 확인 가능
+
+### 분산 트레이싱 (Tempo)
+- `micrometer-tracing-bridge-otel` + `opentelemetry-exporter-otlp` 사용
+- OTLP HTTP로 Tempo(`tempo.monitoring.svc.cluster.local:4318`)로 전송
+- sampling probability: 1.0
+
+### 로그-트레이스 연동
+- 로그에 `[traceId-spanId]` 포함 → Grafana Loki에서 Tempo 링크로 바로 이동 가능
 
 ## CI/CD 흐름
 
@@ -101,3 +126,4 @@ docker build --no-cache -t ktcloud-msa-inventory-service:latest -f Containerfile
 |------|------|
 | [my-msa-common](https://github.com/kjylab/my-msa-common) | 공통 라이브러리 |
 | [my-msa-manifest-values](https://github.com/kjylab/my-msa-manifest-values) | Helm values (이미지 태그 관리) |
+| [my-market-msa-manifest](https://github.com/kjylab/my-market-msa-manifest) | 공통 Helm 차트 |
