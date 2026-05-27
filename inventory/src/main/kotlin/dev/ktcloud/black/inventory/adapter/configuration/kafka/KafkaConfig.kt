@@ -1,6 +1,6 @@
 package dev.ktcloud.black.inventory.adapter.configuration.kafka
 
-import dev.ktcloud.black.inventory.adapter.infrastructure.kafka.model.InventoryReserveRequestMessage
+import dev.ktcloud.black.inventory.application.dto.event.inbound.InventoryReserveRequestEvent
 import dev.ktcloud.black.inventory.adapter.infrastructure.kafka.model.InventoryReservedResultMessage
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -39,8 +39,8 @@ class KafkaConfig(
     }
 
     @Bean
-    fun inventoryReserveRequestConsumerFactory(): ConsumerFactory<String, InventoryReserveRequestMessage> {
-        val deserializer = JsonDeserializer(InventoryReserveRequestMessage::class.java).apply {
+    fun inventoryReserveRequestConsumerFactory(): ConsumerFactory<String, InventoryReserveRequestEvent> {
+        val deserializer = JsonDeserializer(InventoryReserveRequestEvent::class.java).apply {
             addTrustedPackages("dev.ktcloud.black.*")
             setUseTypeHeaders(false)
         }
@@ -58,8 +58,8 @@ class KafkaConfig(
     @Bean
     fun inventoryReserveRequestContainerFactory(
         configurer: ConcurrentKafkaListenerContainerFactoryConfigurer
-    ): ConcurrentKafkaListenerContainerFactory<String, InventoryReserveRequestMessage> {
-        val factory = ConcurrentKafkaListenerContainerFactory<String, InventoryReserveRequestMessage>()
+    ): ConcurrentKafkaListenerContainerFactory<String, InventoryReserveRequestEvent> {
+        val factory = ConcurrentKafkaListenerContainerFactory<String, InventoryReserveRequestEvent>()
         val cf = inventoryReserveRequestConsumerFactory()
 
         factory.consumerFactory = cf
