@@ -22,6 +22,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Run tests
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          PACKAGES_TOKEN: ${{ secrets.GH_PAT }}
+        run: ./gradlew :inventory:test --no-daemon
+
       - name: Build JAR
         env:
           GITHUB_ACTOR: ${{ github.actor }}
