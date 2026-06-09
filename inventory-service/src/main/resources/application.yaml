@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:7004/inventory_db
     username: inventory-service
-    password: inventory-service
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -18,7 +18,7 @@ spring:
     redis:
       host: localhost
       port: 7005
-      password: inventory-service
+      password: ${REDIS_PASSWORD}
 
   kafka:
     bootstrap-servers: localhost:7003
