@@ -1,4 +1,5 @@
 FROM eclipse-temurin:21-jre-jammy
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 RUN useradd -ms /bin/bash springuser
